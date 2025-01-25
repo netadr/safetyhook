@@ -91,6 +91,7 @@ public:
     enum Flags : int {
         Default = 0,            ///< Default flags.
         StartDisabled = 1 << 0, ///< Start the hook disabled.
+        NoThreadTrap = 1 << 1,  ///< Don't trap threads when enabling the hook.
     };
 
     /// @brief Create an inline hook.
@@ -323,6 +324,7 @@ private:
     uintptr_t m_trampoline_size{};
     std::recursive_mutex m_mutex{};
     bool m_enabled{};
+    bool m_should_trap{true};
     Type m_type{Type::Unset};
 
     std::expected<void, Error> setup(

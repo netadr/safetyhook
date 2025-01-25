@@ -57,6 +57,7 @@ public:
     enum Flags : int {
         Default = 0,       ///< Default flags.
         StartDisabled = 1, ///< Start the hook disabled.
+        NoThreadTrap = 2,  ///< Don't trap threads when enabling the hook.
     };
 
     /// @brief Creates a new MidHook object.

@@ -128,6 +128,10 @@ std::expected<InlineHook, InlineHook::Error> InlineHook::create(
         return std::unexpected{setup_result.error()};
     }
 
+    if (flags & NoThreadTrap) {
+        hook.m_should_trap = false;
+    }
+
     if (!(flags & StartDisabled)) {
         if (auto enable_result = hook.enable(); !enable_result) {
             return std::unexpected{enable_result.error()};
@@ -379,8 +383,7 @@ std::expected<void, InlineHook::Error> InlineHook::enable() {
 
     std::optional<Error> error;
 
-    // jmp from original to trampoline.
-    trap_threads(m_target, m_trampoline.data(), m_original_bytes.size(), [this, &error] {
+    const auto hook_enabler = [this, &error] {
         if (m_type == Type::E9) {
             auto trampoline_epilogue = reinterpret_cast<TrampolineEpilogueE9*>(
                 m_trampoline.address() + m_trampoline_size - sizeof(TrampolineEpilogueE9));
@@ -400,7 +403,27 @@ std::expected<void, InlineHook::Error> InlineHook::enable() {
             }
         }
 #endif
-    });
+    };
+
+    // jmp from original to trampoline.
+    if (m_should_trap) {
+        trap_threads(m_target, m_trampoline.data(), m_original_bytes.size(), hook_enabler);
+    } else {
+        const auto from = unprotect(m_target, m_original_bytes.size());
+        const auto to = unprotect(m_trampoline.data(), m_original_bytes.size());
+
+        if (!from) {
+            error = Error::failed_to_unprotect(m_target);
+        }
+
+        if (!to) {
+            error = Error::failed_to_unprotect(m_trampoline.data());
+        }
+
+        if (!error) {
+            hook_enabler();
+        }
+    }
 
     if (error) {
         return std::unexpected{*error};

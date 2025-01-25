@@ -81,6 +81,10 @@ std::expected<MidHook, MidHook::Error> MidHook::create(
         return std::unexpected{setup_result.error()};
     }
 
+    if (flags & NoThreadTrap) {
+        hook.m_hook.m_should_trap = false;
+    }
+
     if (!(flags & StartDisabled)) {
         if (auto enable_result = hook.enable(); !enable_result) {
             return std::unexpected{enable_result.error()};
